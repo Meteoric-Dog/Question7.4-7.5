@@ -20,11 +20,12 @@ using namespace std;
 #define NAME_DISPLAY "Student %d name:%s\n"
 #define ID_DISPLAY "Student %d id:%d\n"
 #define SCORE_DISPLAY "Student %d score:%0.2f\n"
+#define NULL_STUDENT_LIST "The student list is empty\n"
 
 #define MAX_BUFFER_SIZE 20
 #define ASCEND_ORDER 1
 #define DESCEND_ORDER 2
-#define DISCARD_VALUE 5
+#define MIN_SCORE 5
 
 void trim(string &s) {
 	s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {return !std::isspace(ch);}));
@@ -78,7 +79,8 @@ public:
 			while (!this->input_student_info(iter, id_requirement, i)) {
 			}
 			if (iter->id == 0) {
-				pre->next = NULL;
+				if (pre != NULL)             
+					pre->next = NULL;
 				delete iter;
 				break;
 			}
@@ -205,6 +207,9 @@ public:
 	void display_all_students() {
 		Student *iter = students;
 		int i = 0;
+		
+		if (students==NULL)
+			printf(NULL_STUDENT_LIST);
 		while (iter != NULL) {
 			display_student_info(i, iter);
 			iter = iter->next;
@@ -239,10 +244,13 @@ int main() {
 	Classroom class1;
 	class1.input_students();
 
-	class1.sort_by_score(ASCEND_ORDER);
-	class1.display_all_students();
+//	class1.sort_by_score(ASCEND_ORDER);
+//	class1.display_all_students();
 
 	class1.sort_by_score(DESCEND_ORDER);
+//	class1.display_all_students();
+
+	class1.remove_student(MIN_SCORE);
 	class1.display_all_students();
 
 	system("pause");
