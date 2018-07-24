@@ -56,15 +56,20 @@ typedef struct _Student {
 	}
 } Student;
 
-struct classroom {
+struct Classroom {
 	Student *students;
-	int student_amount = 0;
+	int student_amount;
+
+	Classroom() {
+		students = new Student;
+		student_amount = 0;
+	}
 
 public:
 	void input_students() {
 		//bool function_result = false;
 		int name_requirement = 1, id_requirement = 2, score_requirement = 3;
-		Student *iter=students;
+		Student *iter = students, *pre = NULL;
 		int i = 0;
 
 		while(true) {						
@@ -73,15 +78,15 @@ public:
 			while (!this->input_student_info(iter, id_requirement, i)) {
 			}
 			if (iter->id == 0) {
+				pre->next = NULL;
 				delete iter;
-				iter = NULL;
 				break;
 			}
 			while (!this->input_student_info(iter, score_requirement, i)) {
 			}
-
-			iter = iter->next;
+			pre = iter;
 			iter = new Student;
+			pre->next = iter;
 			i++;
 			//display_student_info(i);
 		}
@@ -91,7 +96,7 @@ public:
 
 	bool checkID(int value) {         //for the reuse
 		Student *iter = students;
-		while (iter != NULL) {
+		while (iter->next != NULL) {
 			if (iter->id == value)
 				return false;
 			iter = iter->next;
@@ -165,26 +170,36 @@ public:
 	}
 
 	void sort_by_score(int type) {          //1-ascend          others-descend  	
-		Student *pre = NULL, *first = students, *second = NULL;
-		while(first->next!=NULL) {         //for (int i=0; i<this->student_amount - 2 ;i++)
-			second = first->next;
-			if (type == ASCEND_ORDER) {
-				if (first->score > second->score)
-					swap_student(pre, first, second);
+		Student *pre = NULL, *first = NULL, *second = NULL;
+		for (int i = 0; i < this->student_amount - 1; i++) {
+			first = students;
+			pre = NULL;
+			while (first->next != NULL) {         //for (int i=0; i<this->student_amount - 2 ;i++)
+				second = first->next;
+				if (type == ASCEND_ORDER) {
+					if (first->score > second->score)
+						swap_student(pre, first, second);
+				}
+				else
+					if (first->score < second->score)
+						swap_student(pre, first, second);
+				if (pre == NULL)
+					students = first;
+				pre = first;
+				first = first->next;
 			}
-			else
-				if (first->score < second->score)
-					swap_student(pre, first, second);
-			pre = first;
-			first = first->next;
 		}
 	}
 
-	void swap_student(Student *pre, Student *x, Student *y) {
+	void swap_student(Student *&pre, Student *&x, Student *&y) {
 		if (pre!=NULL)
 			pre->next = y;
 		x->next = y->next;
 		y->next = x;
+
+		Student *temp = x;                //second -> first, first->second
+		x = y;
+		y = temp;
 	}
 
 	void display_all_students() {
@@ -193,6 +208,7 @@ public:
 		while (iter != NULL) {
 			display_student_info(i, iter);
 			iter = iter->next;
+			i++;
 		}			
 	}
 
@@ -220,7 +236,7 @@ public:
 };
 
 int main() {
-	classroom class1;
+	Classroom class1;
 	class1.input_students();
 
 	class1.sort_by_score(ASCEND_ORDER);
