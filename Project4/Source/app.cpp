@@ -22,16 +22,20 @@ using namespace std;
 #define SCORE_DISPLAY "Student %d score:%0.2f\n"
 
 #define MAX_BUFFER_SIZE 20
+#define ASCEND_ORDER 1
+#define DESCEND_ORDER 2
+#define DISCARD_VALUE 5
 
 void trim(string &s) {
 	s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {return !std::isspace(ch);}));
 	s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {return !std::isspace(ch);}).base(), s.end());
 }
 
-struct student {
+typedef struct _Student {
 	char *name;
 	int id;
 	float score;
+	struct _Student *next;
 
 	bool checkScore() {
 		if ((score < 0) || (score > 10)) 
@@ -39,50 +43,63 @@ struct student {
 		return true;
 	}
 
-	student() {
+	_Student() {
 		name = NULL;
 		id = 0;
 		score = 0.0;
+		next = NULL;
 	}
 
-	~student() {
+	~_Student() {
 		if (name != NULL)
 			delete[]name;
 	}
-};
+} Student;
 
 struct classroom {
-	student students[STUDENT_AMOUNT];
+	Student *students;
+	int student_amount = 0;
 
 public:
 	void input_students() {
 		//bool function_result = false;
 		int name_requirement = 1, id_requirement = 2, score_requirement = 3;
-		for (int i = 0; i < STUDENT_AMOUNT; i++) {
-			while (!this->input_student_info(name_requirement, i)) {
+		Student *iter=students;
+		int i = 0;
+
+		while(true) {						
+			while (!this->input_student_info(iter, name_requirement, i)) {
 			}
-			while (!this->input_student_info(id_requirement, i)) {
+			while (!this->input_student_info(iter, id_requirement, i)) {
 			}
-			while (!this->input_student_info(score_requirement, i)) {
+			if (iter->id == 0) {
+				delete iter;
+				iter = NULL;
+				break;
 			}
+			while (!this->input_student_info(iter, score_requirement, i)) {
+			}
+
+			iter = iter->next;
+			iter = new Student;
+			i++;
 			//display_student_info(i);
 		}
+
+		student_amount = i;
 	}
 
-	bool checkID(int type, int index, int value) {         //for the reuse
-		int max_index = 0;
-		if (type == 1)    //1-when we are inputting value           
-			max_index = index;
-		else
-			max_index = STUDENT_AMOUNT;
-
-		for (int i = 0; i < max_index; i++)
-			if (value == students[i].id)
+	bool checkID(int value) {         //for the reuse
+		Student *iter = students;
+		while (iter != NULL) {
+			if (iter->id == value)
 				return false;
+			iter = iter->next;
+		}
 		return true;
 	}
 
-	bool input_student_info(int type, int index) {
+	bool input_student_info(Student *students,int type, int index) {
 		string input = "";
 		int amount = 0;
 
@@ -104,9 +121,9 @@ public:
 		case 1: {
 			amount = input.length();
 			if (amount > 0) {
-				students[index].name = new char[MAX_BUFFER_SIZE];
-				memcpy(students[index].name, input.c_str(), amount);
-				students[index].name[amount] = 0;
+				students->name = new char[MAX_BUFFER_SIZE];
+				memcpy(students->name, input.c_str(), amount);
+				students->name[amount] = 0;
 				return true;
 			}
 			break;
@@ -116,8 +133,8 @@ public:
 			char c = ' ';
 			amount = sscanf(input.c_str(), PATTERN_ID, &temp, &c);
 			if (amount == 1)                        //int valid_amount=1;
-				if (checkID(1, index, temp)) {				//int operation_type=1;
-					students[index].id = temp;
+				if (checkID(temp)) {				
+					students->id = temp;
 					return true;
 				}
 			break;
@@ -127,8 +144,8 @@ public:
 			char c = ' ';
 			amount = sscanf(input.c_str(), PATTERN_SCORE, &temp, &c);
 			if (amount == 1) {
-				students[index].score = temp;
-				if (students[index].checkScore())
+				students->score = temp;
+				if (students->checkScore())
 					return true;
 			}
 			break;
@@ -139,60 +156,65 @@ public:
 		return false;
 	}
 
-	void display_student_info(int index) {		
+	void display_student_info(int index, Student *iter) {		
 		printf("\n");
-		printf(NAME_DISPLAY, index + 1, students[index].name);
-		printf(ID_DISPLAY, index + 1, students[index].id);
-		printf(SCORE_DISPLAY, index + 1, students[index].score);
+		printf(NAME_DISPLAY, index + 1, iter->name);
+		printf(ID_DISPLAY, index + 1, iter->id);
+		printf(SCORE_DISPLAY, index + 1, iter->score);
 		printf("\n");
 	}
 
-	void sort_by_score(int type) {          //1-ascend          others-descend  
-		int jmax = 0;
-		for (int i = 0; i < STUDENT_AMOUNT - 1; i++) {
-			jmax = STUDENT_AMOUNT - i - 1;
-			for (int j = 0; j < jmax; j++)
-				if (type == 1) {
-					if (students[j].score > students[j + 1].score) {
-						this->swap_student(j, j+1);
-					}
-				}
-				else
-					if (students[j].score < students[j + 1].score) {
-						this->swap_student(j, j+1);
-					}
+	void sort_by_score(int type) {          //1-ascend          others-descend  	
+		Student *pre = NULL, *first = students, *second = NULL;
+		while(first->next!=NULL) {         //for (int i=0; i<this->student_amount - 2 ;i++)
+			second = first->next;
+			if (type == ASCEND_ORDER) {
+				if (first->score > second->score)
+					swap_student(pre, first, second);
+			}
+			else
+				if (first->score < second->score)
+					swap_student(pre, first, second);
+			pre = first;
+			first = first->next;
 		}
 	}
 
-	void swap_student(int x, int y) {
-		//swap name
-		char *temp_name = new char[MAX_BUFFER_SIZE];
-		int leng1 = strlen(students[x].name);
-		int leng2 = strlen(students[y].name);
-
-		memset(temp_name, 0, MAX_BUFFER_SIZE);
-		memcpy(temp_name, students[x].name, leng1);
-		
-		memcpy(students[x].name, students[y].name, leng2);
-		students[x].name[leng2] = 0;
-
-		memcpy(students[y].name, temp_name, leng1);
-		students[y].name[leng1] = 0;
-
-		int temp_id = students[x].id;
-		students[x].id = students[y].id;
-		students[y].id = temp_id;
-
-		float temp_score = students[x].score;
-		students[x].score = students[y].score;
-		students[y].score = temp_score;
-
-		delete[]temp_name;
+	void swap_student(Student *pre, Student *x, Student *y) {
+		if (pre!=NULL)
+			pre->next = y;
+		x->next = y->next;
+		y->next = x;
 	}
 
 	void display_all_students() {
-		for (int i = 0; i < STUDENT_AMOUNT; i++) {
-			this->display_student_info(i);
+		Student *iter = students;
+		int i = 0;
+		while (iter != NULL) {
+			display_student_info(i, iter);
+			iter = iter->next;
+		}			
+	}
+
+	void remove_student(int min_score) {
+		Student *iter = students, *pre = NULL;
+		while (iter != NULL) {
+			if (iter->score < min_score) {
+				if (iter != students) {
+					pre->next = iter->next;
+					delete iter;
+					iter = pre->next;
+				}
+				else {
+					students = iter->next;
+					delete iter;
+					iter = students;
+				}
+				this->student_amount--;
+				continue;
+			} 
+			pre = iter;
+			iter = iter->next;
 		}
 	}
 };
@@ -201,10 +223,10 @@ int main() {
 	classroom class1;
 	class1.input_students();
 
-	class1.sort_by_score(1);
+	class1.sort_by_score(ASCEND_ORDER);
 	class1.display_all_students();
 
-	class1.sort_by_score(2);
+	class1.sort_by_score(DESCEND_ORDER);
 	class1.display_all_students();
 
 	system("pause");
